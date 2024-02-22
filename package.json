@@ -9,19 +9,33 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google-cloud/local-auth": "^2.1.0",
+    "@upstash/redis": "^1.28.3",
+    "@upstash/vector": "^1.0.2",
+    "ai": "^2.2.33",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.4.1",
+    "googleapis": "^105.0.0",
+    "langchain": "^0.1.15",
+    "net": "^1.0.2",
+    "next": "14.1.0",
+    "nodemailer": "^6.9.9",
+    "openai": "^4.26.1",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.1.0"
+    "redis": "^4.6.13",
+    "tls": "^0.0.1",
+    "uuidv4": "^6.2.13"
   },
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.0",
     "postcss": "^8",
     "tailwindcss": "^3.3.0",
-    "eslint": "^8",
-    "eslint-config-next": "14.1.0"
+    "typescript": "^5"
   }
 }
