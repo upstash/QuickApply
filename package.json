@@ -9,14 +9,18 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@architecturex/utils.cx": "^1.1.1",
     "@google-cloud/local-auth": "^2.1.0",
+    "@tabler/icons-react": "^3.2.0",
     "@upstash/redis": "^1.28.3",
     "@upstash/vector": "^1.0.2",
     "ai": "^2.2.33",
     "cheerio": "^1.0.0-rc.12",
+    "clsx": "^2.1.0",
     "dotenv": "^16.4.1",
     "googleapis": "^105.0.0",
     "langchain": "^0.1.15",
+    "markdown-to-jsx": "^7.4.6",
     "net": "^1.0.2",
     "next": "14.1.0",
     "nodemailer": "^6.9.9",
@@ -24,6 +28,7 @@
     "react": "^18",
     "react-dom": "^18",
     "redis": "^4.6.13",
+    "tailwind-merge": "^2.2.2",
     "tls": "^0.0.1",
     "uuidv4": "^6.2.13"
   },

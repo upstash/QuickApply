@@ -2,11 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-.quick-apply-container {
-    height: 100vh;
+.wrapper {
+    min-height: 100vh;
+    min-width: 100vh;
     display: flex;
+    justify-content: center;
+}
+
+.quick-apply-container {
+    padding: 1rem;
+    display: flex;
+    overflow-y: auto;
+    min-width: 768px;
+    min-height: 98vh;
+    max-height: 98vh;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
 }
 
@@ -15,6 +26,8 @@
 }
 
 .list-container {
+    overflow: auto;
+    max-height: 680px;
     flex-grow: 1;
 }
 
@@ -23,11 +36,12 @@
     width: 100%;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: stretch;
 }
 
 .cv-upload-form,
 .text-input-form {
+    min-width: 736px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -37,15 +51,8 @@
 .text-input-form button {
     border-radius: 15px;
     padding: 10px 20px;
-    background-color: #28a745;
-    color: white;
     border: none;
     cursor: pointer;
-}
-
-.cv-upload-form button:hover,
-.text-input-form button:hover {
-    background-color: #218838;
 }
 
 input[type="file"],

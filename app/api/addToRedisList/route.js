@@ -17,7 +17,16 @@ import { BufferMemory } from "langchain/memory";
 import { UpstashRedisChatMessageHistory } from "langchain/stores/message/upstash_redis";
 import { Index } from "@upstash/vector";
 import { uploader } from "./upload_to_sheets.js";
+import { google } from 'googleapis';
 dotenv.config();
+
+const auth = new google.auth.GoogleAuth({
+    scopes: ['https://www.googleapis.com/auth/drive'],
+    credentials: {
+        private_key: process.env.GOOGLE_PRIVATE_KEY,
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+    },
+});
 
 const index = new Index({
     url: process.env.UPSTASH_VECTOR_REST_URL,
@@ -34,11 +43,20 @@ const embeddings = new OpenAIEmbeddings({
 
 
 const readjson = async () => {
-    let data = await readFile(process.cwd() + '/job-config.json', { encoding: 'utf8' });
-    return data;
+    const drive = google.drive({ version: 'v3', auth: auth });
+
+    // Read the file content
+    const response = await drive.files.get({
+        fileId: process.env.CONFIG_FILE_ID,
+        alt: 'media'
+    });
+
+    return response.data
+    //let data = await readFile(process.cwd() + '/job-config.json', { encoding: 'utf8' });
+    //return data;
 };
 let data = await readjson();
-let jsonData = JSON.parse(data);
+let jsonData = data;
 let questions = jsonData.questions;
 let documents = jsonData.documents;
 let position = jsonData.position;
@@ -96,7 +114,6 @@ const getretriever = async () => {
         vectors.push(vector);
     }
     await index.upsert(vectors);
-
 };
 
 
