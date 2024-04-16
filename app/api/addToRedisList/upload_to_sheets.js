@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
 import dotenv from 'dotenv';
 dotenv.config();
-// Initializes the Google APIs client library and sets up the authentication using service account credentials.
+
 const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     credentials: {
@@ -12,7 +12,6 @@ const auth = new google.auth.GoogleAuth({
     },
 });
 
-// Asynchronous function to write data to a Google Sheet.
 async function writeToSheet(values) {
     const sheets = google.sheets({ version: 'v4', auth });
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;

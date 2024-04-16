@@ -1,5 +1,5 @@
-// pages/api/addToRedisList.ts
 import { NextResponse } from 'next/server';
+import { Message as VercelChatMessage, StreamingTextResponse } from 'ai';
 import { Redis } from '@upstash/redis'
 import dotenv from 'dotenv';
 import { StringOutputParser } from "@langchain/core/output_parsers";
@@ -36,7 +36,9 @@ const chatModel = new ChatOpenAI({
     modelName: process.env.MODEL_NAME,
     temperature: 0.2,
     openAIApiKey: process.env.OPEN_AI_API_KEY,
+    streaming: true
 });
+
 const embeddings = new OpenAIEmbeddings({
     openAIApiKey: process.env.OPEN_AI_API_KEY,
 });
@@ -64,7 +66,7 @@ let morecontext = jsonData["more-context"];
 let email = jsonData["hiring-manager-email"];
 let welcomemessage = jsonData["welcome-message"];
 let link = jsonData["position-link"];
-
+let current_channel = "0";
 async function getRelevantDocuments(question) {
     const vector = await embeddings.embedDocuments([question]);
 
@@ -145,6 +147,14 @@ const cv_question = ChatPromptTemplate.fromMessages([
     ["human", `Does the question asks user to load a cv? Output only YES or NO. The Question is:{question}`]
 ]);
 
+const cv_chain = RunnableSequence.from([
+    {
+        question: (i) => i,
+    },
+    cv_question,
+    chatModel,
+    new StringOutputParser()
+]);
 
 const chat_chain = RunnableSequence.from([
     {
@@ -158,15 +168,6 @@ const chat_chain = RunnableSequence.from([
         context: (previousOutput) => previousOutput.context,
     },
     prompt1,
-    chatModel,
-    new StringOutputParser()
-]);
-
-const cv_chain = RunnableSequence.from([
-    {
-        question: (i) => i,
-    },
-    cv_question,
     chatModel,
     new StringOutputParser()
 ]);
@@ -211,37 +212,15 @@ const end_chain = RunnableSequence.from([
     new StringOutputParser()
 ]);
 
-const ai_function = async (input, channel) => {
-    let is_finished = await end_chain.invoke(input);
-    let ai_output = await chat_chain.invoke(input);
-    await memory.saveContext({
-        input: input.input
-    }, {
-        output: ai_output
-    });
-    if (is_finished.toLowerCase() === "yes") {
-        let unanswered_questions = await unanswered_chain.invoke({});
-        let answers = await answer_chain.invoke(questions);
-        console.log(unanswered_questions);
-        console.log("------------------");
-        console.log(answers);
-        uploader({ uuid: channel, answers: answers, questions: unanswered_questions, email_receiver: email }
-        )
-            .then(response => response.json())
-            .then(data => console.log(data))
-            .catch(error => console.error(error));
-    }
-    return ai_output;
-}
-
-
 export async function POST(req, res) {
     if (req.method === 'POST') {
         const data = await req.json();
-        const text = data.text;
+        const text = data.text; // unanswered questions for type 6
         const channel = data.channel_name;
-        if (memory === null) {
-            console.log(channel);
+        console.log(channel);
+        if (memory === null || current_channel !== channel) {
+            console.log("created channel:" + channel);
+            current_channel = channel;
             memory = new BufferMemory({
                 returnMessages: true,
                 chatHistory: new UpstashRedisChatMessageHistory({
@@ -253,18 +232,47 @@ export async function POST(req, res) {
                 }),
             });
         }
-        let context = await getRelevantDocuments(text);
-        if (context === "") {
-            await getretriever();
-            context = await getRelevantDocuments(text);
+        const type = data.type;
+        const ai_output = data.ai_output; // answers questions for type 6
+
+        if (type == 0) {
+            let load_cv = await cv_chain.stream(text);
+            return new StreamingTextResponse(load_cv);
+        } else if (type == 1) {
+
+            let context = await getRelevantDocuments(text);
+            if (context === "") {
+                await getretriever();
+                context = await getRelevantDocuments(text);
+            }
+            let stream = await chat_chain.stream({ input: text, context: context });
+            return new StreamingTextResponse(stream);
+        } else if (type == 2) {
+            await memory.saveContext({
+                input: text
+            }, {
+                output: ai_output
+            });
+            return NextResponse.json({ Message: "Chat history saved.", status: 201 });
+        } else if (type == 3) {
+            let is_finished = await end_chain.stream({ input: text });
+            return new StreamingTextResponse(is_finished);
+        } else if (type == 4) {
+            let unanswered_questions = await unanswered_chain.stream({});
+            return new StreamingTextResponse(unanswered_questions);
         }
-        if (!text) {
-            return res.status(400).json({ error: 'Text is required' });
+        else if (type == 5) {
+            let answers = await answer_chain.stream(questions);
+            return new StreamingTextResponse(answers);
+        } else {
+            uploader({ uuid: channel, answers: ai_output, questions: text, email_receiver: email }
+            )
+                .then(response => response.json())
+                .then(data => console.log(data))
+                .catch(error => console.error(error));
+            return NextResponse.json({ Message: "Successfully Uploaded.", status: 201 });
         }
-        let ai_output = await ai_function({ input: text, context: context }, channel);
-        let load_cv = await cv_chain.invoke(ai_output, channel)
-        return NextResponse.json({ text: ai_output, loadcv: load_cv });
     } else {
-        res.status(405).json({ error: 'Method Not Allowed' });
+        return NextResponse.json({ error: 'Method not allowed.' }, { status: 405 })
     }
 }

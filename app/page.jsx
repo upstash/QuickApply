@@ -1,4 +1,3 @@
-// pages/index.js (or any other frontend component)
 'use client';
 import { v4 as uuid } from "uuid";
 import './globals.css';
@@ -9,7 +8,7 @@ import { IconUser } from "@tabler/icons-react";
 import Markdown from "markdown-to-jsx";
 import UpstashLogo from "./upstash-logo";
 import PoweredBy from "./powered-by";
-// pages/index.js
+
 
 import { useState, useEffect, useRef } from 'react';
 
@@ -25,27 +24,43 @@ export default function Home() {
         setSelectedFile(event.target.files[0]);
     };
 
+
     useEffect(() => {
         const fetchData = async () => {
             if (unique_id == 0) {
                 try {
                     let id = uuid();
+                    console.log(id);
                     setunique_id(id);
                     const response = await fetch('/api/addToRedisList', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ channel_name: id, text: "hello" }),
+                        body: JSON.stringify({ channel_name: id, text: "hello", type: 1, ai_output: "" }),
                     });
                     if (response.ok) {
-                        const responseData = await response.json();
-                        const textFromResponse = responseData.text;
-                        let textFromResponse_obj = { text: textFromResponse, sender: "ai" };
+                        let buff = await response.arrayBuffer();
+                        const decoder = new TextDecoder('utf-8');
+                        const decodedString = decoder.decode(buff);
+                        let textFromResponse_obj = { text: decodedString, sender: "ai" };
                         setListData([...listData, textFromResponse_obj]);
                         setInputText('');
+                        const response2 = await fetch('/api/addToRedisList', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ channel_name: id, text: "hello", type: 2, ai_output: decodedString }),
+                        });
+                        if (response2.ok) {
+                            //ok
+                        } else {
+                            console.error('Failed to save chat history.');
+                        }
+
                     } else {
-                        console.error('Failed to add text to Redis list');
+                        console.error('Failed to receive answer from backend.');
                     }
                 } catch (error) {
                     console.error('Error submitting form:', error);
@@ -70,27 +85,108 @@ export default function Home() {
         let temp_text = inputText;
         setInputText('');
         try {
-            const response = await fetch('/api/addToRedisList', {
+            let textFromResponse = "";
+            let response = await fetch('/api/addToRedisList', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ channel_name: unique_id, text: temp_text }),
+                body: JSON.stringify({ channel_name: unique_id, text: temp_text, type: 1, ai_output: "" }),
             });
+
             if (response.ok) {
-                const responseData = await response.json();
-                const textFromResponse = responseData.text;
-                const loadcv = responseData.loadcv;
-                if (loadcv.toLowerCase() === "yes") {
+                let buff = await response.arrayBuffer();
+                const decoder = new TextDecoder('utf-8');
+                const decodedString = decoder.decode(buff);
+                textFromResponse = decodedString;
+                let textFromResponse_obj = { text: textFromResponse, sender: "ai" };
+                setListData([...listData, user_input, textFromResponse_obj]);
+                const response2 = await fetch('/api/addToRedisList', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ channel_name: unique_id, text: temp_text, type: 2, ai_output: decodedString }),
+                });
+                if (response2.ok) {
+                    //ok
+                } else {
+                    console.error('Failed to save chat history.');
+                }
+            } else {
+                console.error('Failed to receive answer from backend.');
+            }
+            response = await fetch('/api/addToRedisList', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ channel_name: unique_id, text: textFromResponse, type: 0, ai_output: "" }),
+            });
+
+            if (response.ok) {
+                let buff0 = await response.arrayBuffer();
+                const decoder0 = new TextDecoder('utf-8');
+                const decodedString0 = decoder0.decode(buff0);
+                let textFromResponse0 = decodedString0;
+                if (textFromResponse0.toLowerCase() === "yes") {
                     setCvUpload(true);
                 } else {
                     setCvUpload(false);
                 }
-                let textFromResponse_obj = { text: textFromResponse, sender: "ai" };
-                setListData([...listData, user_input, textFromResponse_obj]);
             } else {
-                console.error('Failed to add text to Redis list');
+                console.error('Failed check cv upload');
             }
+
+            response = await fetch('/api/addToRedisList', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ channel_name: unique_id, text: temp_text, type: 3, ai_output: "" }),
+            });
+            if (response.ok) {
+                let buff = await response.arrayBuffer();
+                const decoder = new TextDecoder('utf-8');
+                const decodedString = decoder.decode(buff);
+                textFromResponse = decodedString;
+                if (textFromResponse.toLowerCase() === "yes") {
+                    response = await fetch('/api/addToRedisList', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ channel_name: unique_id, text: "", type: 4, ai_output: "" }),
+                    });
+                    let buff4 = await response.arrayBuffer();
+                    const decoder4 = new TextDecoder('utf-8');
+                    const decodedString4 = decoder4.decode(buff4);
+                    let textFromResponse4 = decodedString4;
+                    response = await fetch('/api/addToRedisList', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ channel_name: unique_id, text: "", type: 5, ai_output: "" }),
+                    });
+                    let buff5 = await response.arrayBuffer();
+                    const decoder5 = new TextDecoder('utf-8');
+                    const decodedString5 = decoder5.decode(buff5);
+                    let textFromResponse5 = decodedString5;
+                    response = await fetch('/api/addToRedisList', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ channel_name: unique_id, text: textFromResponse4, type: 6, ai_output: textFromResponse5 }),
+                    });
+                }
+            } else {
+                console.error('Failed do end check and operations');
+            }
+
+
+
         } catch (error) {
             console.error('Error submitting form:', error);
         }
@@ -115,13 +211,29 @@ export default function Home() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ channel_name: unique_id, text: "I uploaded the CV." }),
+                body: JSON.stringify({ channel_name: unique_id, text: "I uploaded the CV.", type: 1, ai_output: "" }),
             });
             if (response.ok) {
-                const responseData = await response.json();
-                const textFromResponse = responseData.text;
+                let buff = await response.arrayBuffer();
+                const decoder = new TextDecoder('utf-8');
+                const decodedString = decoder.decode(buff);
+                let textFromResponse = decodedString;
                 let textFromResponse_obj = { text: textFromResponse, sender: "ai" };
                 setListData([...listData, textFromResponse_obj]);
+                const response2 = await fetch('/api/addToRedisList', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ channel_name: unique_id, text: "I uploaded the CV.", type: 2, ai_output: decodedString }),
+                });
+                if (response2.ok) {
+                    //ok
+                } else {
+                    console.error('Failed to save chat history.');
+                }
+            } else {
+                console.error('Failed to receive answer from backend.');
             }
         } catch (error) {
             console.error('Error submitting form:', error);
