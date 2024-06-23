@@ -11,7 +11,9 @@
   "dependencies": {
     "@architecturex/utils.cx": "^1.1.1",
     "@google-cloud/local-auth": "^2.1.0",
+    "@remixicon/react": "^4.2.0",
     "@tabler/icons-react": "^3.2.0",
+    "@upstash/ratelimit": "^1.2.1",
     "@upstash/redis": "^1.28.3",
     "@upstash/vector": "^1.0.2",
     "ai": "^2.2.33",
@@ -33,6 +35,8 @@
     "react": "^18",
     "react-dom": "^18",
     "redis": "^4.6.13",
+    "remixicon": "^4.3.0",
+    "remixicon-react": "^1.0.0",
     "tailwind-merge": "^2.2.2",
     "tls": "^0.0.1",
     "uuidv4": "^6.2.13"

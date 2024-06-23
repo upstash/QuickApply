@@ -34,7 +34,7 @@ const index = new Index({
 });
 const chatModel = new ChatOpenAI({
     modelName: process.env.MODEL_NAME,
-    temperature: 0.2,
+    temperature: 0.1,
     openAIApiKey: process.env.OPEN_AI_API_KEY,
     streaming: true
 });
@@ -59,6 +59,7 @@ const readjson = async () => {
 };
 let data = await readjson();
 let jsonData = data;
+let endmessage = jsonData["goodbye-message"];
 let questions = jsonData.questions;
 let documents = jsonData.documents;
 let position = jsonData.position;
@@ -66,7 +67,6 @@ let morecontext = jsonData["more-context"];
 let email = jsonData["hiring-manager-email"];
 let welcomemessage = jsonData["welcome-message"];
 let link = jsonData["position-link"];
-let current_channel = "0";
 async function getRelevantDocuments(question) {
     const vector = await embeddings.embedDocuments([question]);
 
@@ -119,32 +119,48 @@ const getretriever = async () => {
 };
 
 
-let memory = null;
-
 
 const prompt1 = ChatPromptTemplate.fromMessages([
-    ["system", `You are a helpful chatbot greet user using ${welcomemessage} and ask user's name and wait for the user to answer. Then ask the user's email and wait for the user to answer. After those ask ${questions} one by one and wait for the user to answer between the questions. Use chat previous chat history to determine which question to ask. If the previous answer does not answer the previous question properly, ask the previous question again. If the all of the questions are answered, ask user to load a cv in pdf format. After that let the user ask questions. Answer the user's questions based only on the provided context and if the answer cannot be determined only using context just say you will send an email to hiring manager and NEVER make up an answer. Be precise and give a short answer. The context:{context}.`],
+    ["system", `You are a helpful chatbot greet user using ${welcomemessage} and ask user's name and wait for the user to answer. Then ask the user's email and wait for the user to answer. After those ask ${questions} one by one and wait for the user to answer between the questions. Use chat previous chat history to determine which question to ask. If the previous answer does not answer the previous question properly, ask the previous question again. If the all of the questions are answered, ask user to load a cv in pdf format. After that let the user ask questions by asking user to click the questionmark symbol if the user has a question else the user should click to tick symbol. Answer the user's questions based only on the provided context and if the answer cannot be determined only using context just say you will send an email to hiring manager and NEVER make up an answer. Be precise and give a short answer. Then ask user to click the questionmark symbol if the user has other questions else the user should click to tick symbol. The context:{context}.`],
     new MessagesPlaceholder("history"),
     ["human", `Input:{input}`]
 ]);
 
 const extractor_prompt = ChatPromptTemplate.fromMessages([
     new MessagesPlaceholder("history"),
-    ["human", `Extract answers of the questions from the chat history. Output must include the user's name, email and answers to the questions. Each element of the output must be separated by semicolon. Questions:{input}`]
+    ["human", `Extract answers of the questions from the chat history. Output must include the user's name, email and answers to the questions paired with their corresponding questions. Each element of the output must be separated by semicolon. Questions:{input}`]
 ]);
 const end_prompt = ChatPromptTemplate.fromMessages([
-    ["system", `Using the chat history, output only "YES" if the previous user input indicates that the user does not have any more questions or user says goodbye else output only "NO". Output nothing else.`],
+    ["system", `Say goodbye to the user using the following message: {endmessage}`],
     new MessagesPlaceholder("history"),
     ["human", `{input}`]
 ]);
-const unanswered_questions_prompt = ChatPromptTemplate.fromMessages([
-    ["system", ``],
+const email_prompt = ChatPromptTemplate.fromMessages([
+    ["system", `You are going to send an email to the hiring manager.`],
     new MessagesPlaceholder("history"),
-    ["human", `List questions asked by the user after the user uploaded the CV and AI failed to answer or said it will send an email to the hiring manager. Use chat history to determine the questions and the answers.`]
+    ["human", `List questions asked by the user after the user uploaded the CV. Use chat history to determine the questions asked by the user and the answers. Each question and answer in the output must be enumareted and separated by a newline. Then append the following thing to the output and change semicolons to newlines: {questions}`]
 ]);
 
 const cv_question = ChatPromptTemplate.fromMessages([
     ["human", `Does the question asks user to load a cv? Output only YES or NO. The Question is:{question}`]
+]);
+
+const email_question = ChatPromptTemplate.fromMessages([
+    ["system", ``],
+    new MessagesPlaceholder("history"),
+    ["human", `What is my email address? Just output the email address nothing else. `]
+]);
+
+const email_extractor_chain = RunnableSequence.from([
+    {
+        memory: (i) => i.mem.loadMemoryVariables({}),
+    },
+    {
+        history: (previousOutput) => previousOutput.memory.history,
+    },
+    email_question,
+    chatModel,
+    new StringOutputParser()
 ]);
 
 const cv_chain = RunnableSequence.from([
@@ -156,10 +172,11 @@ const cv_chain = RunnableSequence.from([
     new StringOutputParser()
 ]);
 
+
 const chat_chain = RunnableSequence.from([
     {
         input: (i) => i.input,
-        memory: () => memory.loadMemoryVariables({}),
+        memory: (i) => i.mem.loadMemoryVariables({}),
         context: (i) => i.context,//retriever1.pipe(formatDocumentsAsString),
     },
     {
@@ -174,8 +191,8 @@ const chat_chain = RunnableSequence.from([
 
 const answer_chain = RunnableSequence.from([
     {
-        input: (i) => i,
-        memory: () => memory.loadMemoryVariables({}),
+        input: (i) => i.input,
+        memory: (i) => i.mem.loadMemoryVariables({}),
     },
     {
         input: (previousOutput) => previousOutput.input,
@@ -186,14 +203,16 @@ const answer_chain = RunnableSequence.from([
     new StringOutputParser()
 ]);
 
-const unanswered_chain = RunnableSequence.from([
+const email_chain = RunnableSequence.from([
     {
-        memory: () => memory.loadMemoryVariables({}),
+        memory: (i) => i.mem.loadMemoryVariables({}),
+        questions: (i) => i.questions,
     },
     {
+        questions: (previousOutput) => previousOutput.questions,
         history: (previousOutput) => previousOutput.memory.history,
     },
-    unanswered_questions_prompt,
+    email_prompt,
     chatModel,
     new StringOutputParser()
 ]);
@@ -201,11 +220,12 @@ const unanswered_chain = RunnableSequence.from([
 const end_chain = RunnableSequence.from([
     {
         input: (i) => i.input,
-        memory: () => memory.loadMemoryVariables({}),
+        memory: (i) => i.mem.loadMemoryVariables({}),
     },
     {
         history: (previousOutput) => previousOutput.memory.history,
         input: (previousOutput) => previousOutput.input,
+        endmessage: () => endmessage,
     },
     end_prompt,
     chatModel,
@@ -217,35 +237,31 @@ export async function POST(req, res) {
         const data = await req.json();
         const text = data.text; // unanswered questions for type 6
         const channel = data.channel_name;
-        console.log(channel);
-        if (memory === null || current_channel !== channel) {
-            console.log("created channel:" + channel);
-            current_channel = channel;
-            memory = new BufferMemory({
-                returnMessages: true,
-                chatHistory: new UpstashRedisChatMessageHistory({
-                    sessionId: channel,
-                    config: {
-                        url: process.env.UPSTASH_REDIS_REST_URL,
-                        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-                    }
-                }),
-            });
-        }
-        const type = data.type;
+        const type = data.type ?? -1;
+        console.log(type + ":" + channel);
+        let memory = new BufferMemory({
+            returnMessages: true,
+            chatHistory: new UpstashRedisChatMessageHistory({
+                sessionId: channel,
+                config: {
+                    url: process.env.UPSTASH_REDIS_REST_URL,
+                    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+                }
+            }),
+        });
+
         const ai_output = data.ai_output; // answers questions for type 6
 
         if (type == 0) {
             let load_cv = await cv_chain.stream(text);
             return new StreamingTextResponse(load_cv);
         } else if (type == 1) {
-
             let context = await getRelevantDocuments(text);
             if (context === "") {
                 await getretriever();
                 context = await getRelevantDocuments(text);
             }
-            let stream = await chat_chain.stream({ input: text, context: context });
+            let stream = await chat_chain.stream({ input: text, context: context, mem: memory });
             return new StreamingTextResponse(stream);
         } else if (type == 2) {
             await memory.saveContext({
@@ -254,23 +270,29 @@ export async function POST(req, res) {
                 output: ai_output
             });
             return NextResponse.json({ Message: "Chat history saved.", status: 201 });
-        } else if (type == 3) {
-            let is_finished = await end_chain.stream({ input: text });
+        } else if (type == 3) { // isfinished
+            let is_finished = await end_chain.stream({ input: "", mem: memory });
             return new StreamingTextResponse(is_finished);
         } else if (type == 4) {
-            let unanswered_questions = await unanswered_chain.stream({});
-            return new StreamingTextResponse(unanswered_questions);
+            let email_text = await email_chain.stream({ mem: memory, questions: ai_output });
+            return new StreamingTextResponse(email_text);
         }
         else if (type == 5) {
-            let answers = await answer_chain.stream(questions);
+            let answers = await answer_chain.stream({ input: questions, mem: memory });
             return new StreamingTextResponse(answers);
-        } else {
-            uploader({ uuid: channel, answers: ai_output, questions: text, email_receiver: email }
+        } else if (type == 6) {
+            let user_email = data.user_email;
+            uploader({ uuid: channel, answers: ai_output, questions: text, email_receiver: email, user_email: user_email, user_emailcontent: endmessage }
             )
                 .then(response => response.json())
                 .then(data => console.log(data))
                 .catch(error => console.error(error));
             return NextResponse.json({ Message: "Successfully Uploaded.", status: 201 });
+        } else if (type == 7) {
+            let email = await email_extractor_chain.stream({ mem: memory });
+            return new StreamingTextResponse(email);
+        } else {
+            return NextResponse.json({ error: 'Invalid type.' }, { status: 405 });
         }
     } else {
         return NextResponse.json({ error: 'Method not allowed.' }, { status: 405 })

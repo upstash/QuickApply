@@ -56,13 +56,16 @@ export const uploader = async (data) => {
         const answers = data.answers;
         const questions = data.questions;
         const email_receiver = data.email_receiver;
+        const user_email = data.user_email;
+        const user_content = data.user_emailcontent;
         console.log(uuid);
         let list_to_write = [];
         list_to_write.push(uuid);
         let newTextItems = answers.split(';');
         let combinedList = list_to_write.concat(newTextItems);
-        const writer = await writeToSheet([combinedList]);
-
+        if (process.env.USE_SHEETS.toLowerCase() === 'true') {
+            const writer = await writeToSheet([combinedList]);
+        }
         var transporter = nodemailer.createTransport({
             service: process.env.EMAIL_SERVICE,
             auth: {
@@ -72,20 +75,35 @@ export const uploader = async (data) => {
         });
         console.log([combinedList]);
 
-        var mailOptions = {
+        var mailOptions1 = {
             from: process.env.EMAIL,
             to: email_receiver,
             subject: `${uuid}`,
             text: questions,
         };
 
-        transporter.sendMail(mailOptions, function (error, info) {
+        var mailOptions2 = {
+            from: process.env.EMAIL,
+            to: user_email,
+            subject: `Your application is submitted with ID: ${uuid}`,
+            text: user_content,
+        };
+
+        transporter.sendMail(mailOptions1, function (error, info) {
             if (error) {
                 console.log(error);
             } else {
-                console.log('Email sent: ' + info.response);
+                console.log('Email1 sent: ' + info.response);
             }
         });
+        transporter.sendMail(mailOptions2, function (error, info) {
+            if (error) {
+                console.log(error);
+            } else {
+                console.log('Email2 sent: ' + info.response);
+            }
+        });
+
         return NextResponse.json({ Message: "Success", status: 201 });
     } catch (error) {
         console.log("Error occurred ", error);

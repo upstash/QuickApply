@@ -1,4 +1,5 @@
 'use client';
+import { RiCheckLine, RiQuestionLine } from '@remixicon/react'
 import { v4 as uuid } from "uuid";
 import './globals.css';
 import { clsx } from "clsx";
@@ -18,6 +19,9 @@ export default function Home() {
     const [inputText, setInputText] = useState('');
     const [listData, setListData] = useState([]);
     const [cv_upload, setCvUpload] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [canfinish, setCanfinish] = useState(false);//make it false later
+    const [askfinish, setAskfinish] = useState(false);//make it false later
     const [selectedFile, setSelectedFile] = useState(null);
     const [unique_id, setunique_id] = useState(0);
     const handleFileInputChange = (event) => {
@@ -29,6 +33,7 @@ export default function Home() {
         const fetchData = async () => {
             if (unique_id == 0) {
                 try {
+                    setLoading(true);
                     let id = uuid();
                     console.log(id);
                     setunique_id(id);
@@ -43,6 +48,7 @@ export default function Home() {
                         let buff = await response.arrayBuffer();
                         const decoder = new TextDecoder('utf-8');
                         const decodedString = decoder.decode(buff);
+                        setLoading(false);
                         let textFromResponse_obj = { text: decodedString, sender: "ai" };
                         setListData([...listData, textFromResponse_obj]);
                         setInputText('');
@@ -60,7 +66,7 @@ export default function Home() {
                         }
 
                     } else {
-                        console.error('Failed to receive answer from backend.');
+                        console.error('Failed to receive answer from backend1.');
                     }
                 } catch (error) {
                     console.error('Error submitting form:', error);
@@ -84,6 +90,7 @@ export default function Home() {
         setListData([...listData, user_input]);
         let temp_text = inputText;
         setInputText('');
+        setLoading(true);
         try {
             let textFromResponse = "";
             let response = await fetch('/api/addToRedisList', {
@@ -100,6 +107,7 @@ export default function Home() {
                 const decodedString = decoder.decode(buff);
                 textFromResponse = decodedString;
                 let textFromResponse_obj = { text: textFromResponse, sender: "ai" };
+                setLoading(false);
                 setListData([...listData, user_input, textFromResponse_obj]);
                 const response2 = await fetch('/api/addToRedisList', {
                     method: 'POST',
@@ -114,7 +122,7 @@ export default function Home() {
                     console.error('Failed to save chat history.');
                 }
             } else {
-                console.error('Failed to receive answer from backend.');
+                console.error('Failed to receive answer from backend2.');
             }
             response = await fetch('/api/addToRedisList', {
                 method: 'POST',
@@ -132,72 +140,94 @@ export default function Home() {
                 if (textFromResponse0.toLowerCase() === "yes") {
                     setCvUpload(true);
                 } else {
+                    setAskfinish(true);
                     setCvUpload(false);
                 }
             } else {
                 console.error('Failed check cv upload');
             }
-
-            response = await fetch('/api/addToRedisList', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ channel_name: unique_id, text: temp_text, type: 3, ai_output: "" }),
-            });
-            if (response.ok) {
-                let buff = await response.arrayBuffer();
-                const decoder = new TextDecoder('utf-8');
-                const decodedString = decoder.decode(buff);
-                textFromResponse = decodedString;
-                if (textFromResponse.toLowerCase() === "yes") {
-                    response = await fetch('/api/addToRedisList', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ channel_name: unique_id, text: "", type: 4, ai_output: "" }),
-                    });
-                    let buff4 = await response.arrayBuffer();
-                    const decoder4 = new TextDecoder('utf-8');
-                    const decodedString4 = decoder4.decode(buff4);
-                    let textFromResponse4 = decodedString4;
-                    response = await fetch('/api/addToRedisList', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ channel_name: unique_id, text: "", type: 5, ai_output: "" }),
-                    });
-                    let buff5 = await response.arrayBuffer();
-                    const decoder5 = new TextDecoder('utf-8');
-                    const decodedString5 = decoder5.decode(buff5);
-                    let textFromResponse5 = decodedString5;
-                    response = await fetch('/api/addToRedisList', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ channel_name: unique_id, text: textFromResponse4, type: 6, ai_output: textFromResponse5 }),
-                    });
-                }
-            } else {
-                console.error('Failed do end check and operations');
-            }
-
-
-
         } catch (error) {
             console.error('Error submitting form:', error);
         }
     };
+    const handleContinue = async (event) => {
+        event.preventDefault();
+        setAskfinish(false);
+    }
+    const handleEnd = async (event) => {
+        event.preventDefault();
+        setLoading(true);
+        let response = await fetch('/api/addToRedisList', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ channel_name: unique_id, text: "", type: 5, ai_output: "" }),
+        });
+        let buff5 = await response.arrayBuffer();
+        const decoder5 = new TextDecoder('utf-8');
+        const decodedString5 = decoder5.decode(buff5);
+        let textFromResponse5 = decodedString5;
 
+        response = await fetch('/api/addToRedisList', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ channel_name: unique_id, text: "", type: 4, ai_output: textFromResponse5 }),
+        });
+        let buff4 = await response.arrayBuffer();
+        const decoder4 = new TextDecoder('utf-8');
+        const decodedString4 = decoder4.decode(buff4);
+        let textFromResponse4 = decodedString4;
+
+        response = await fetch('/api/addToRedisList', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ channel_name: unique_id, text: "", type: 7, ai_output: textFromResponse5 }),
+        });
+        let buff7 = await response.arrayBuffer();
+        const decoder7 = new TextDecoder('utf-8');
+        const decodedString7 = decoder7.decode(buff7);
+        let textFromResponse7 = decodedString7;
+
+        response = await fetch('/api/addToRedisList', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ channel_name: unique_id, text: textFromResponse4, type: 6, ai_output: textFromResponse5, user_email: textFromResponse7 }),
+        });
+        response = await fetch('/api/addToRedisList', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ channel_name: unique_id, text: "", type: 3, ai_output: "" }),
+        });
+        if (response.ok) {
+            let buff = await response.arrayBuffer();
+            const decoder = new TextDecoder('utf-8');
+            const decodedString = decoder.decode(buff);
+            setLoading(false);
+            let textFromResponse_obj = { text: decodedString, sender: "ai" };
+            setListData([...listData, textFromResponse_obj]);
+            setInputText('');
+        } else {
+            console.error('Failed to receive answer from backend1.');
+        }
+        setAskfinish(false);
+
+    }
     const handlefileSubmit = async (event) => {
         try {
             event.preventDefault();
             const formData = new FormData();
             formData.append("file", selectedFile);
             formData.append("uuid", unique_id);
+            setLoading(true);
             fetch("/api/upload", {
                 method: "POST",
                 body: formData,
@@ -219,6 +249,7 @@ export default function Home() {
                 const decodedString = decoder.decode(buff);
                 let textFromResponse = decodedString;
                 let textFromResponse_obj = { text: textFromResponse, sender: "ai" };
+                setLoading(false);
                 setListData([...listData, textFromResponse_obj]);
                 const response2 = await fetch('/api/addToRedisList', {
                     method: 'POST',
@@ -229,11 +260,13 @@ export default function Home() {
                 });
                 if (response2.ok) {
                     //ok
+                    setAskfinish(true);
+                    setCanfinish(true);
                 } else {
                     console.error('Failed to save chat history.');
                 }
             } else {
-                console.error('Failed to receive answer from backend.');
+                console.error('Failed to receive answer from backend3.');
             }
         } catch (error) {
             console.error('Error submitting form:', error);
@@ -314,55 +347,79 @@ export default function Home() {
                     {listData.map((item, index) => (
                         <TextBubble key={index} props={item}></TextBubble>
                     ))}
+                    {loading && <article
+                        className={cx(
+                            "mb-4 flex items-start gap-4 p-4 md:p-5 rounded-2xl",
+                            "bg-emerald-50",
+                        )}
+                    >
+                        <div className="loader" />
+                    </article>}
+
                 </div>
-                <div className="form-container flex justify-stretch">
-                    {cv_upload ? (
-                        <form onSubmit={handlefileSubmit} className="cv-upload-form relative m-auto flex items-center gap-4 justify-center">
-                            <input
-                                type="file"
-                                onChange={handleFileInputChange}
-                                className={cx(
-                                    "transition h-10 md:h-12 pl-4 pr-12 flex-1 rounded-xl",
-                                    "border border-gray-400 text-base",
-                                    "disabled:bg-gray-100",
-                                )} />
-                            <button
-                                type="submit"
-                                tabIndex={-1}
-                                className={cx(
-                                    "absolute right-3 top-1/2 -translate-y-1/2",
-                                    "opacity-50",
-                                )}
-                            >
-                                <IconArrowBack stroke={1.5} />
-                            </button>
-                        </form>
-                    ) : (
-                        <form onSubmit={handletextSubmit} className="text-input-form relative m-auto flex items-center gap-4 justify-center">
-                            <input
-                                required
-                                type="text"
-                                value={inputText}
-                                onChange={(e) => setInputText(e.target.value)}
-                                placeholder="Enter your answer..."
-                                className={cx(
-                                    "transition h-10 md:h-12 pl-4 pr-12 flex-1 rounded-xl",
-                                    "border border-gray-400 text-base",
-                                    "disabled:bg-gray-100",
-                                )}
-                            />
-                            <button
-                                type="submit"
-                                tabIndex={-1}
-                                className={cx(
-                                    "absolute right-3 top-1/2 -translate-y-1/2",
-                                    "opacity-50",
-                                )}
-                            >
-                                <IconArrowBack stroke={1.5} />
-                            </button>
-                        </form>
-                    )}
+                <div className="form-container flex w-full">
+                    {(canfinish && askfinish) ?
+                        (<div className={cx(
+                            "transition h-10 md:h-12 pl-4 pr-4 flex rounded-xl flex-row items-center",
+                            "border border-gray-400 text-base",
+                            "disabled:bg-gray-100",
+                            "w-full self-center",
+                            "justify-center relative gap-4"
+                        )}>
+                            <form onSubmit={handleEnd} className='flex justify-stretch rounded-xl border border-gray-400 text-base items-center w-full'>
+                                <button type="submit" className='flex justify-center items-center w-full'><RiCheckLine /></button>
+                            </form>
+                            <form onSubmit={handleContinue} className='flex justify-stretch rounded-xl border border-gray-400 text-base items-center w-full'>
+                                <button type="submit" className='flex justify-center items-center w-full'><RiQuestionLine /></button>
+                            </form>
+                        </div>) : (
+                            cv_upload ? (
+                                <form onSubmit={handlefileSubmit} className="cv-upload-form relative m-auto flex items-center gap-4 justify-center" >
+                                    <input
+                                        type="file"
+                                        onChange={handleFileInputChange}
+                                        className={cx(
+                                            "transition h-10 md:h-12 pl-4 pr-12 flex-1 rounded-xl",
+                                            "border border-gray-400 text-base",
+                                            "disabled:bg-gray-100",
+                                        )} />
+                                    <button
+                                        type="submit"
+                                        tabIndex={-1}
+                                        className={cx(
+                                            "absolute right-3 top-1/2 -translate-y-1/2",
+                                            "opacity-50",
+                                        )}
+                                    >
+                                        <IconArrowBack stroke={1.5} />
+                                    </button>
+                                </form>
+                            ) : (
+                                <form onSubmit={handletextSubmit} className="text-input-form relative m-auto flex items-center gap-4 justify-center">
+                                    <input
+                                        required
+                                        type="text"
+                                        value={inputText}
+                                        onChange={(e) => setInputText(e.target.value)}
+                                        placeholder="Enter your answer..."
+                                        className={cx(
+                                            "transition h-10 md:h-12 pl-4 pr-12 flex-1 rounded-xl",
+                                            "border border-gray-400 text-base",
+                                            "disabled:bg-gray-100",
+                                        )}
+                                    />
+                                    <button
+                                        type="submit"
+                                        tabIndex={-1}
+                                        className={cx(
+                                            "absolute right-3 top-1/2 -translate-y-1/2",
+                                            "opacity-50",
+                                        )}
+                                    >
+                                        <IconArrowBack stroke={1.5} />
+                                    </button>
+                                </form>
+                            ))}
                 </div>
                 <PoweredBy />
             </div>
