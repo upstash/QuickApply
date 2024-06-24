@@ -193,12 +193,26 @@ export default function Home() {
         const decodedString7 = decoder7.decode(buff7);
         let textFromResponse7 = decodedString7;
 
-        response = await fetch('/api/addToRedisList', {
+        response = await fetch('/api/email', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ channel_name: unique_id, text: textFromResponse4, type: 6, ai_output: textFromResponse5, user_email: textFromResponse7 }),
+            body: JSON.stringify({ uuid: unique_id, questions: textFromResponse4, type: 1, user_email: textFromResponse7 }),
+        });
+        response = await fetch('/api/email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uuid: unique_id, questions: textFromResponse4, type: 2, user_email: textFromResponse7 }),
+        });
+        response = await fetch('/api/upload_to_sheets', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uuid: unique_id, answers: textFromResponse5 }),
         });
         response = await fetch('/api/addToRedisList', {
             method: 'POST',
