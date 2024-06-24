@@ -3,9 +3,7 @@ import nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
 import dotenv from 'dotenv';
 dotenv.config();
-export const config = {
-    runtime: 'edge'
-}
+export const runtime = "edge"
 
 const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/drive'],
