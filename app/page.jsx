@@ -198,14 +198,14 @@ export default function Home() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ uuid: unique_id, questions: textFromResponse4, type: 1, user_email: textFromResponse7 }),
+            body: JSON.stringify({ uuid: unique_id, answers: textFromResponse5, questions: textFromResponse4, type: 1, user_email: textFromResponse7 }),
         });
         response = await fetch('/api/email', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ uuid: unique_id, questions: textFromResponse4, type: 2, user_email: textFromResponse7 }),
+            body: JSON.stringify({ uuid: unique_id, answers: textFromResponse5, questions: textFromResponse4, type: 2, user_email: textFromResponse7 }),
         });
         response = await fetch('/api/upload_to_sheets', {
             method: 'POST',

@@ -138,7 +138,7 @@ const end_prompt = ChatPromptTemplate.fromMessages([
 const email_prompt = ChatPromptTemplate.fromMessages([
     ["system", `You are going to send an email to the hiring manager.`],
     new MessagesPlaceholder("history"),
-    ["human", `List questions asked by the user after the user uploaded the CV. Use chat history to determine the questions asked by the user and the answers. Each question and answer in the output must be enumareted and separated by a newline. Then append the following thing to the output and change semicolons to newlines: {questions}`]
+    ["human", `List questions asked by the user after the user uploaded the CV. Use chat history to determine the questions asked by the user and the answers. Each question and answer in the output must be enumareted and separated by a newline.`]
 ]);
 
 const cv_question = ChatPromptTemplate.fromMessages([
@@ -206,10 +206,8 @@ const answer_chain = RunnableSequence.from([
 const email_chain = RunnableSequence.from([
     {
         memory: (i) => i.mem.loadMemoryVariables({}),
-        questions: (i) => i.questions,
     },
     {
-        questions: (previousOutput) => previousOutput.questions,
         history: (previousOutput) => previousOutput.memory.history,
     },
     email_prompt,
@@ -274,7 +272,7 @@ export async function POST(req, res) {
             let is_finished = await end_chain.stream({ input: "", mem: memory });
             return new StreamingTextResponse(is_finished);
         } else if (type == 4) {
-            let email_text = await email_chain.stream({ mem: memory, questions: ai_output });
+            let email_text = await email_chain.stream({ mem: memory });
             return new StreamingTextResponse(email_text);
         }
         else if (type == 5) {

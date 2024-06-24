@@ -33,6 +33,7 @@ export async function POST(req, res) {
     if (req.method === 'POST') {
         try {
             const data = await req.json();
+            const answers = data.answers;
             const uuid = data.uuid;
             const type = data.type;
             const questions = data.questions;
@@ -51,7 +52,7 @@ export async function POST(req, res) {
                     from: process.env.EMAIL,
                     to: email_receiver,
                     subject: `${uuid}`,
-                    text: questions,
+                    text: questions + "\n" + answers.replace(";", "\n"),
                 };
                 transporter.sendMail(mailOptions1, function (error, info) {
                     if (error) {
