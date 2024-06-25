@@ -389,7 +389,7 @@ export default function Home() {
                         </div>) : (
                             cv_upload ? (
                                 <form onSubmit={handlefileSubmit} className="cv-upload-form relative m-auto flex items-center gap-4 justify-center" >
-                                    <input
+                                    <input required
                                         type="file"
                                         onChange={handleFileInputChange}
                                         className={cx(

@@ -48,11 +48,12 @@ export async function POST(req, res) {
                 }
             });
             if (type == 1) {
+                let temp = answers.split(';').join('\n');
                 var mailOptions1 = {
                     from: process.env.EMAIL,
                     to: email_receiver,
                     subject: `${uuid}`,
-                    text: questions + "\n" + answers.replace(";", "\n"),
+                    text: questions + "\n" + temp,
                 };
                 transporter.sendMail(mailOptions1, function (error, info) {
                     if (error) {

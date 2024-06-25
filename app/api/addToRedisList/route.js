@@ -16,10 +16,9 @@ import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts
 import { BufferMemory } from "langchain/memory";
 import { UpstashRedisChatMessageHistory } from "langchain/stores/message/upstash_redis";
 import { Index } from "@upstash/vector";
-import { uploader } from "./upload_to_sheets.js";
 import { google } from 'googleapis';
 dotenv.config();
-
+export const maxDuration = 60;
 const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/drive'],
     credentials: {
@@ -278,14 +277,6 @@ export async function POST(req, res) {
         else if (type == 5) {
             let answers = await answer_chain.stream({ input: questions, mem: memory });
             return new StreamingTextResponse(answers);
-        } else if (type == 6) {
-            let user_email = data.user_email;
-            uploader({ uuid: channel, answers: ai_output, questions: text, email_receiver: email, user_email: user_email, user_emailcontent: endmessage }
-            )
-                .then(response => response.json())
-                .then(data => console.log(data))
-                .catch(error => console.error(error));
-            return NextResponse.json({ Message: "Successfully Uploaded.", status: 201 });
         } else if (type == 7) {
             let email = await email_extractor_chain.stream({ mem: memory });
             return new StreamingTextResponse(email);
